@@ -1,9 +1,10 @@
 {
   "name": "discordai",
   "version": "1.0.0",
-  "description": "",
+  "description": "Discord AI Bot",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "discord.js": "^14.26.4",
-    "openai": "^6.45.0"
+    "openai": "^6.45.0",
+    "mongoose": "^8.0.0"
   }
 }
