@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const fs = require("fs");
+const OpenAI = require("openai");
 
+// Discord Bot
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -9,17 +10,53 @@ const client = new Client({
   ]
 });
 
-client.on("ready", () => {
-  console.log("Bot ist online!");
+// OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
-client.on("messageCreate", message => {
+client.on("ready", () => {
+  console.log("🤖 Bot ist online!");
+});
+
+// KI Antwort (Auto Chat)
+client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  fs.appendFileSync(
-    "messages.txt",
-    `${message.author.username}: ${message.content}\n`
-  );
+  try {
+    const prompt = `
+Du bist ein Discord User.
+Antworte locker, kurz und mit Emojis.
+
+Nachricht: ${message.content}
+
+Wenn es keine Antwort braucht, schreibe: NO_REPLY
+`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Du bist ein hilfreicher Discord User."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    });
+
+    const text = response.choices[0].message.content;
+
+    if (!text.includes("NO_REPLY")) {
+      message.reply(text);
+    }
+
+  } catch (err) {
+    console.log("Fehler:", err);
+  }
 });
 
-client.login("MTUyMjIwOTM2NzAzMjU5ODYyMA.G5ynMy.YknBDwszfrMTeoEZLP_Q-z7R378vku--itrYak");
+// LOGIN (WICHTIG: über Railway Variable)
+client.login(process.env.TOKEN);
