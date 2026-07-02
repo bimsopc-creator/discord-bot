@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const OpenAI = require("openai");
+const fs = require("fs");
 
 const client = new Client({
   intents: [
@@ -9,66 +9,46 @@ const client = new Client({
   ]
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Memory laden
+function loadMemory() {
+  try {
+    return JSON.parse(fs.readFileSync("./memory.json", "utf8"));
+  } catch {
+    return [];
+  }
+}
 
-// einfacher „Style Speicher“
-let memory = [];
+// Memory speichern
+function saveMemory(data) {
+  fs.writeFileSync("./memory.json", JSON.stringify(data, null, 2));
+}
+
+let memory = loadMemory();
 
 client.on("ready", () => {
-  console.log("Bot ist online!");
+  console.log("Bot läuft mit Memory!");
 });
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  const text = message.content.toLowerCase();
+  const text = message.content;
 
-  // 🔥 CODEWORT
-  if (text.includes("bot active")) {
+  // 🔥 Codewort
+  if (text.toLowerCase().includes("bot active")) {
     return message.reply("Bot aktiv 😄");
   }
 
-  // Speicher dein Schreibstil
-  memory.push(message.content);
-  if (memory.length > 30) memory.shift();
+  // 🧠 speichern
+  memory.push(text);
 
-  try {
+  if (memory.length > 50) memory.shift();
 
-    const style = memory.join("\n");
+  saveMemory(memory);
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `
-Du bist ein normaler Discord User.
-Du schreibst natürlich wie ein Mensch im Chat.
-Du passt dich dem Schreibstil an:
-
-STIL BEISPIELE:
-${style}
-
-Regeln:
-- kurz antworten
-- locker schreiben
-- Emojis nur manchmal
-- nicht über KI sprechen
-`
-        },
-        {
-          role: "user",
-          content: message.content
-        }
-      ]
-    });
-
-    message.reply(response.choices[0].message.content);
-
-  } catch (err) {
-    console.log(err);
+  // 🤖 einfache Antwort
+  if (text.includes("?")) {
+    message.reply("Ich hab mir das gemerkt 👍");
   }
 });
 
