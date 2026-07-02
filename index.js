@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits } = require("discord.js");
+const mongoose = require("mongoose");
 const OpenAI = require("openai");
-const fs = require("fs");
 
 const client = new Client({
   intents: [
@@ -10,56 +10,52 @@ const client = new Client({
   ]
 });
 
+// OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// Memory laden
-function loadMemory() {
-  try {
-    return JSON.parse(fs.readFileSync("./memory.json", "utf8"));
-  } catch {
-    return [];
-  }
-}
+// MongoDB connect
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB verbunden"))
+  .catch(err => console.log("Mongo Error:", err));
 
-// Memory speichern
-function saveMemory(data) {
-  fs.writeFileSync("./memory.json", JSON.stringify(data, null, 2));
-}
-
-let memory = loadMemory();
+// Memory Schema
+const Message = mongoose.model("Message", {
+  user: String,
+  text: String
+});
 
 client.on("ready", () => {
   console.log("Bot ist online!");
 });
 
+// Codewort
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   const text = message.content;
 
-  // Codewort
+  // 🔥 Codewort
   if (text.toLowerCase().includes("bot active")) {
     return message.reply("Bot aktiv 😄");
   }
 
-  // Memory speichern
-  memory.push({
+  // 💾 Speichern in MongoDB
+  await Message.create({
     user: message.author.username,
     text: text
   });
 
-  if (memory.length > 100) memory.shift();
-
-  saveMemory(memory);
-
   try {
-    const context = memory
-      .slice(-20)
+    // 📚 Letzte Messages holen
+    const history = await Message.find().sort({ _id: -1 }).limit(20);
+
+    const context = history
       .map(m => `${m.user}: ${m.text}`)
       .join("\n");
 
+    // 🤖 KI Antwort
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -67,15 +63,10 @@ client.on("messageCreate", async (message) => {
           role: "system",
           content: `
 Du bist ein normaler Discord User.
-Schreibe natürlich, locker und menschlich.
+Schreibe natürlich, locker, menschlich.
 
-Hier ist Chat Verlauf:
+Chat Verlauf:
 ${context}
-
-Regeln:
-- kurz antworten
-- manchmal Emojis
-- wie echter User schreiben
 `
         },
         {
