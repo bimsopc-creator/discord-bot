@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const OpenAI = require("openai");
 
-// Discord Bot
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -10,53 +9,67 @@ const client = new Client({
   ]
 });
 
-// OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// einfacher „Style Speicher“
+let memory = [];
+
 client.on("ready", () => {
-  console.log("🤖 Bot ist online!");
+  console.log("Bot ist online!");
 });
 
-// KI Antwort (Auto Chat)
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
+  const text = message.content.toLowerCase();
+
+  // 🔥 CODEWORT
+  if (text.includes("bot active")) {
+    return message.reply("Bot aktiv 😄");
+  }
+
+  // Speicher dein Schreibstil
+  memory.push(message.content);
+  if (memory.length > 30) memory.shift();
+
   try {
-    const prompt = `
-Du bist ein Discord User.
-Antworte locker, kurz und mit Emojis.
 
-Nachricht: ${message.content}
-
-Wenn es keine Antwort braucht, schreibe: NO_REPLY
-`;
+    const style = memory.join("\n");
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "Du bist ein hilfreicher Discord User."
+          content: `
+Du bist ein normaler Discord User.
+Du schreibst natürlich wie ein Mensch im Chat.
+Du passt dich dem Schreibstil an:
+
+STIL BEISPIELE:
+${style}
+
+Regeln:
+- kurz antworten
+- locker schreiben
+- Emojis nur manchmal
+- nicht über KI sprechen
+`
         },
         {
           role: "user",
-          content: prompt
+          content: message.content
         }
       ]
     });
 
-    const text = response.choices[0].message.content;
-
-    if (!text.includes("NO_REPLY")) {
-      message.reply(text);
-    }
+    message.reply(response.choices[0].message.content);
 
   } catch (err) {
-    console.log("Fehler:", err);
+    console.log(err);
   }
 });
 
-// LOGIN (WICHTIG: über Railway Variable)
 client.login(process.env.TOKEN);
